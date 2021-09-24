@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+        <canvas id="canvas" :width="cw" :height="ch" style="border: 1px #ccc solid;"></canvas>
+        <img src="" id="img">
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script>
+        var app = new Vue({
+            el: '#app',
+            data: {
+                imgURL: 'test.png',
+                coord: [
+                    //裁剪框四角初始坐标
+                    [100,100],
+                    [400,100],
+                    [400,400],
+                    [100,400]
+                ],
+                w: 5,
+                strokeStyle: 'rgb(250,55,50)',
+                fillStyle: 'rgba(250,255,255,0.3)',
+                cursor: ['nw-resize','n-resize','ne-resize','e-resize','se-resize','s-resize','sw-resize','w-resize','move','default'],
+                lineDash: [5,10],
+                currentCp: 9,
+                down: false,
+                ox: 10,
+                oy: 10,
+                cw: 500,
+                ch: 500
+            },
+            methods: {
+                init: function() {
+                    //初始化
+                    this.c = document.querySelector('#canvas');
+                    this.ctx = this.c.getContext('2d');
+                    this.ctx.strokeStyle = this.strokeStyle;
+                    this.ctx.fillStyle = this.fillStyle;
+                    this.image = document.images[0];
+                    this.image.src = this.imgURL;
+                    this.image.width = 0;
+                    //onload后执行
+                    this.image.onload = () => {
+                        this.ctx.drawImage(this.image, this.ox, this.oy, 480, 480);
+                        this.drawBorder();
+                        this.drawControl();
+                    }
+                },
+                calc: function(coord) {
+                    //计算控制器位置
+                    let cps = [];
+                    for(let i=0;i<coord.length;i++) {
+                        cps.push({
+                            index: i*2,
+                            cursor: this.cursor[i*2],
+                            coord: [coord[i][0],coord[i][1]]
+                        });
+                    }
+                    for(let i=0;i<coord.length;i++) {
+                        let nxt = i===3?0:i+1;
+                        cps.push({
+                            index: i*2+1,
+                            cursor: this.cursor[i*2+1],
+                            coord: [(coord[i][0]+coord[nxt][0])/2,(coord[i][1]+coord[nxt][1])/2]
+                        });
+                    }
+                    cps.push({
+                        index: 8,
+                        cursor: this.cursor[8],
+                        coord: [(coord[0][0]+coord[2][0])/2,(coord[0][1]+coord[2][1])/2]
+                    });
+                    return cps;
+                },
+                drawBorder: function() {
+                    this.ctx.save();
+                    this.ctx.setLineDash([5,5]);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.coord[0][0],this.coord[0][1])
+                    for(let i=0;i<this.coord.length;i++) {
+                        if(i<3) {
+                            this.ctx.lineTo(this.coord[i+1][0],this.coord[i+1][1]);
+                        }else {
+                            this.ctx.lineTo(this.coord[0][0],this.coord[0][1]);
+                        }
+                    }
+                    this.ctx.stroke();
+                    this.ctx.fill();
+                    this.ctx.restore();
+                },
+                drawControl: function() {
+                    this.cps = this.calc(this.coord);
+                    let c = this.ctx;
+                    for(let i=0;i<this.cps.length;i++) {
+                        let x = this.cps[i].coord[0];
+                        let y = this.cps[i].coord[1];
+                        let w = this.w;
+                        c.beginPath();
+                        c.lineTo(x-w,y+w);
+                        c.lineTo(x+w,y+w);
+                        c.lineTo(x+w,y-w);
+                        c.lineTo(x-w,y-w);
+                        c.closePath();
+                        c.stroke();
+                    }
+                },
+                getCurrntCp: function(x,y) {
+                    let cps = this.cps;
+                    let w = this.w;
+                    for(let i=0;i<cps.length;i++) {
+                        let px = cps[i].coord[0];
+                        let py = cps[i].coord[1];
+                        if(x>=px-w&&x<=px+w&&y>=py-w&&y<=py+w) {
+                            return cps[i].index;
+                        }
+                    }
+                    return 9;
+                },
+                redraw: function(x,y) {
+                    let mx = x - this.dx;
+                    let my = y - this.dy;
+                    this.ctx.clearRect(0,0,this.ch,this.cw);
+                    this.ctx.drawImage(this.image, this.ox, this.oy, 480, 480);
+                    for(let i=0;i<this.coord.length;i++) {
+                        this.coord[i][0] += mx;
+                        this.coord[i][1] += my;
+                    }
+                    this.drawBorder();
+                    this.drawControl();
+                    this.dx = x;
+                    this.dy = y;
+                },
+                
+            },
+            mounted: function() {
+                this.init();
+                //监视鼠标是否移动到控制器上
+                this.c.addEventListener('mousemove',(e) => {
+                    let x = e.clientX - this.c.offsetLeft;
+                    let y = e.clientY - this.c.offsetTop;
+                    if(this.down === false) {
+                        this.currentCp = this.getCurrntCp(x,y);
+                        this.c.style.cursor = this.cursor[this.currentCp]
+                    }else {
+                        if(this.currentCp === 8) {
+                            console.log(e);
+                            this.redraw(x,y)
+                        }
+                    }
+                })
+                this.c.addEventListener('mousedown',(e) => {
+                    if(this.currentCp<9) {
+                        this.down = true;
+                        this.dx = e.clientX - this.c.offsetLeft;
+                        this.dy = e.clientY - this.c.offsetTop;
+                    }
+                })
+                this.c.addEventListener('mouseup',(e) => {
+                    if(this.down) {
+                        this.down = false;
+                    }
+                })
+            }
+        })
+    </script>
+</body>
+</html>
