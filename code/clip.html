@@ -136,7 +136,42 @@
                     this.dx = x;
                     this.dy = y;
                 },
-                
+                resize(x,y) {
+                    let mx = x - this.dx;
+                    let my = y - this.dy;
+                    this.ctx.clearRect(0,0,this.ch,this.cw);
+                    this.ctx.drawImage(this.image, this.ox, this.oy, 480, 480);
+                    if(this.currentCp%2 === 0) {
+                        let n1 = this.currentCp/2;
+                        let n2 = n1===3?0:n1+1;
+                        let n3 = n1===0?3:n1-1;
+                        if(n1===0||n1===2) {
+                            this.coord[n1][0] += mx;
+                            this.coord[n1][1] += my;
+                            this.coord[n2][1] += my;
+                            this.coord[n3][0] += mx;
+                        }else {
+                            this.coord[n1][0] += mx;
+                            this.coord[n1][1] += my;
+                            this.coord[n2][0] += mx;
+                            this.coord[n3][1] += my;
+                        }
+                    }else {
+                        let n1 = (this.currentCp-1)/2;
+                        let n2 = n1===3?0:n1+1;
+                        if(this.coord[n1][0]===this.coord[n2][0]) {
+                            this.coord[n1][0] += mx;
+                            this.coord[n2][0] += mx;
+                        }else {
+                            this.coord[n1][1] += my;
+                            this.coord[n2][1] += my;
+                        }
+                    }
+                    this.drawBorder();
+                    this.drawControl();
+                    this.dx = x;
+                    this.dy = y;
+                }
             },
             mounted: function() {
                 this.init();
@@ -149,8 +184,9 @@
                         this.c.style.cursor = this.cursor[this.currentCp]
                     }else {
                         if(this.currentCp === 8) {
-                            console.log(e);
-                            this.redraw(x,y)
+                            this.redraw(x,y);
+                        }else {
+                            this.resize(x,y);
                         }
                     }
                 })
