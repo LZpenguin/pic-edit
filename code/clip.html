@@ -25,16 +25,20 @@
                     [100,400]
                 ],
                 w: 5,
+                step: 1.1,
                 strokeStyle: 'rgb(250,55,50)',
                 fillStyle: 'rgba(250,255,255,0.3)',
                 cursor: ['nw-resize','n-resize','ne-resize','e-resize','se-resize','s-resize','sw-resize','w-resize','move','default'],
                 lineDash: [5,10],
                 currentCp: 9,
                 down: false,
+                movep: false,
                 ox: 10,
                 oy: 10,
                 cw: 500,
-                ch: 500
+                ch: 500,
+                pw: 480,
+                ph: 480
             },
             methods: {
                 init: function() {
@@ -48,7 +52,7 @@
                     this.image.width = 0;
                     //onload后执行
                     this.image.onload = () => {
-                        this.ctx.drawImage(this.image, this.ox, this.oy, 480, 480);
+                        this.ctx.drawImage(this.image, this.ox, this.oy, this.pw, this.ph);
                         this.drawBorder();
                         this.drawControl();
                     }
@@ -122,11 +126,11 @@
                     }
                     return 9;
                 },
-                redraw: function(x,y) {
+                moveControl: function(x,y) {
                     let mx = x - this.dx;
                     let my = y - this.dy;
                     this.ctx.clearRect(0,0,this.ch,this.cw);
-                    this.ctx.drawImage(this.image, this.ox, this.oy, 480, 480);
+                    this.ctx.drawImage(this.image, this.ox, this.oy, this.pw, this.ph);
                     for(let i=0;i<this.coord.length;i++) {
                         this.coord[i][0] += mx;
                         this.coord[i][1] += my;
@@ -136,11 +140,11 @@
                     this.dx = x;
                     this.dy = y;
                 },
-                resize(x,y) {
+                resizeControl(x,y) {
                     let mx = x - this.dx;
                     let my = y - this.dy;
                     this.ctx.clearRect(0,0,this.ch,this.cw);
-                    this.ctx.drawImage(this.image, this.ox, this.oy, 480, 480);
+                    this.ctx.drawImage(this.image, this.ox, this.oy, this.pw, this.ph);
                     if(this.currentCp%2 === 0) {
                         let n1 = this.currentCp/2;
                         let n2 = n1===3?0:n1+1;
@@ -171,6 +175,35 @@
                     this.drawControl();
                     this.dx = x;
                     this.dy = y;
+                },
+                resizePic(n) {
+                    let oldCenter = [this.ox+this.pw/2,this.oy+this.ph/2];
+                    if(n) {
+                        this.pw *= this.step;
+                        this.ph *= this.step;
+                    }else {
+                        this.pw /= this.step;
+                        this.ph /= this.step;
+                    }
+                    let newCenter = [this.ox+this.pw/2,this.oy+this.ph/2];
+                    this.movePic(newCenter[0]-oldCenter[0],newCenter[1]-oldCenter[1],0)
+                },
+                movePic(x,y,n) {
+                    if(n) {
+                        let mx = x - this.dx;
+                        let my = y - this.dy;
+                        this.ox += mx;
+                        this.oy +=my;
+                    }else {
+                        this.ox -= x;
+                        this.oy -= y;
+                    } 
+                    this.ctx.clearRect(0,0,this.ch,this.cw);
+                    this.ctx.drawImage(this.image, this.ox, this.oy, this.pw, this.ph);
+                    this.drawBorder();
+                    this.drawControl();
+                    this.dx = x;
+                    this.dy = y;
                 }
             },
             mounted: function() {
@@ -179,29 +212,45 @@
                 this.c.addEventListener('mousemove',(e) => {
                     let x = e.clientX - this.c.offsetLeft;
                     let y = e.clientY - this.c.offsetTop;
-                    if(this.down === false) {
+                    if(this.down === false&&this.movep === false) {
                         this.currentCp = this.getCurrntCp(x,y);
                         this.c.style.cursor = this.cursor[this.currentCp]
-                    }else {
+                    }else if(this.down === true){
                         if(this.currentCp === 8) {
-                            this.redraw(x,y);
+                            this.moveControl(x,y);
                         }else {
-                            this.resize(x,y);
+                            this.resizeControl(x,y);
                         }
+                    }else if(this.movep === true) {
+                        this.movePic(x,y,1);
                     }
-                })
+                });
                 this.c.addEventListener('mousedown',(e) => {
                     if(this.currentCp<9) {
                         this.down = true;
-                        this.dx = e.clientX - this.c.offsetLeft;
-                        this.dy = e.clientY - this.c.offsetTop;
+                        this.movep = false;
+                    }else if(this.currentCp===9) {
+                        this.movep = true;
+                        this.down = false;
                     }
-                })
+                    this.dx = e.clientX - this.c.offsetLeft;
+                    this.dy = e.clientY - this.c.offsetTop;
+                });
                 this.c.addEventListener('mouseup',(e) => {
                     if(this.down) {
                         this.down = false;
                     }
-                })
+                    if(this.movep) {
+                        this.movep = false
+                    }
+                });
+                this.c.addEventListener('mousewheel',(e) => {
+                    if(e.wheelDelta>0) {
+                        this.resizePic(1);
+                    }else {
+                        this.resizePic(0);
+                    }
+                });
             }
         })
     </script>
