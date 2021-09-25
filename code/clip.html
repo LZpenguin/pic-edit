@@ -10,8 +10,15 @@
     <div id="app">
         <canvas id="canvas" :width="cw" :height="ch" style="border: 1px #ccc solid;"></canvas>
         <img src="" id="img">
+        <br>
+        <input type="file" id='file'>
         <button id="clip">clip</button>
         <button id="reclip">reclip</button>
+        固定裁剪框比例<input type="checkbox" v-model="w_h">
+        固定裁剪框大小<input type="checkbox" v-model="lockCtl">
+        固定被剪裁图像大小<input type="checkbox" v-model="lockPic">
+        <span v-html="borderw"></span>
+        <span v-html="borderh"></span>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script>
@@ -35,12 +42,18 @@
                 currentCp: 9,
                 down: false,
                 movep: false,
+                cliped: false,
+                lockCtl: false,
+                w_h: false,
+                lockPic: false,
                 ox: 10,
                 oy: 10,
                 cw: 500,
                 ch: 500,
                 pw: 480,
-                ph: 480
+                ph: 480,
+                borderw: 300,
+                borderh: 300
             },
             methods: {
                 init: function() {
@@ -49,13 +62,22 @@
                     this.ctx = this.c.getContext('2d');
                     this.ctx.strokeStyle = this.strokeStyle;
                     this.ctx.fillStyle = this.fillStyle;
-                    this.image = document.images[0];
+                    this.image = new Image();
                     this.image.src = this.imgURL;
-                    this.image.width = 0;
                     this.clip = document.querySelector('#clip');
                     this.reclip = document.querySelector('#reclip');
+                    this.file = document.querySelector('#file');
                     //onload后执行
                     this.image.onload = () => {
+                        this.pw = this.image.width;
+                        this.ph = this.image.height;
+                        while(this.pw >= this.cw||this.ph >= this.ch) {
+                            this.pw /= this.step;
+                            this.ph /= this.step;
+                        }
+                        this.ox = (this.cw-this.pw)/2;
+                        this.oy = (this.ch-this.ph)/2;
+                        this.ctx.clearRect(0,0,this.cw,this.ch);
                         this.ctx.drawImage(this.image, this.ox, this.oy, this.pw, this.ph);
                         this.drawBorder();
                         this.drawControl();
@@ -145,6 +167,9 @@
                     this.dy = y;
                 },
                 resizeControl(x,y) {
+                    if(this.lockCtl) {
+                        return;
+                    }
                     let mx = x - this.dx;
                     let my = y - this.dy;
                     this.ctx.clearRect(0,0,this.ch,this.cw);
@@ -154,33 +179,58 @@
                         let n2 = n1===3?0:n1+1;
                         let n3 = n1===0?3:n1-1;
                         if(n1===0||n1===2) {
+                            if(this.w_h) {
+                                let w = this.coord[2][0]-this.coord[0][0];
+                                let h = this.coord[2][1]-this.coord[0][1];
+                                if(Math.abs(mx)<Math.abs(my)) {
+                                    mx = my*w/h;
+                                }else {
+                                    my = mx*h/w;
+                                }
+                            }
                             this.coord[n1][0] += mx;
                             this.coord[n1][1] += my;
                             this.coord[n2][1] += my;
                             this.coord[n3][0] += mx;
                         }else {
+                            if(this.w_h) {
+                                let w = this.coord[2][0]-this.coord[0][0];
+                                let h = this.coord[2][1]-this.coord[0][1];
+                                if(Math.abs(mx)<Math.abs(my)) {
+                                    mx = -my*w/h;
+                                }else {
+                                    my = -mx*h/w;
+                                }
+                            }
                             this.coord[n1][0] += mx;
                             this.coord[n1][1] += my;
                             this.coord[n2][0] += mx;
                             this.coord[n3][1] += my;
                         }
                     }else {
-                        let n1 = (this.currentCp-1)/2;
-                        let n2 = n1===3?0:n1+1;
-                        if(this.coord[n1][0]===this.coord[n2][0]) {
-                            this.coord[n1][0] += mx;
-                            this.coord[n2][0] += mx;
-                        }else {
-                            this.coord[n1][1] += my;
-                            this.coord[n2][1] += my;
+                        if(this.w_h === false) {
+                            let n1 = (this.currentCp-1)/2;
+                            let n2 = n1===3?0:n1+1;
+                            if(this.coord[n1][0]===this.coord[n2][0]) {
+                                this.coord[n1][0] += mx;
+                                this.coord[n2][0] += mx;
+                            }else {
+                                this.coord[n1][1] += my;
+                                this.coord[n2][1] += my;
+                            }
                         }
                     }
                     this.drawBorder();
                     this.drawControl();
                     this.dx = x;
                     this.dy = y;
+                    this.borderw = this.coord[2][0]-this.coord[0][0];
+                    this.borderh = this.coord[2][1]-this.coord[0][1];
                 },
                 resizePic(n) {
+                    if(this.lockPic) {
+                        return;
+                    }
                     let oldCenter = [this.ox+this.pw/2,this.oy+this.ph/2];
                     if(n) {
                         this.pw *= this.step;
@@ -246,6 +296,9 @@
                     }
                 });
                 this.c.addEventListener('mousedown',(e) => {
+                    if(this.cliped) {
+                        return;
+                    }
                     let x = e.clientX - this.c.offsetLeft;
                     let y = e.clientY - this.c.offsetTop;
                     this.currentCp = this.getCurrntCp(x,y)
@@ -260,6 +313,9 @@
                     this.dy = e.clientY - this.c.offsetTop;
                 });
                 this.c.addEventListener('touchstart',(e) => {
+                    if(this.cliped) {
+                        return;
+                    }
                     let x = e.targetTouches[0].clientX - this.c.offsetLeft;
                     let y = e.targetTouches[0].clientY - this.c.offsetTop;
                     this.currentCp = this.getCurrntCp(x,y)
@@ -290,6 +346,10 @@
                     }
                 });
                 this.c.addEventListener('mousewheel',(e) => {
+                    e.preventDefault();
+                    if(this.cliped) {
+                        return;
+                    }
                     if(e.wheelDelta>0) {
                         this.resizePic(1);
                     }else {
@@ -297,6 +357,10 @@
                     }
                 });
                 this.clip.addEventListener('click',() => {
+                    if(this.cliped) {
+                        return;
+                    }
+                    this.cliped = true;
                     let width = this.coord[2][0] - this.coord[0][0];
                     let height = this.coord[2][1] - this.coord[0][1];
                     this.ctx.save();
@@ -308,11 +372,18 @@
                     this.ctx.drawImage(this.image,this.ox,this.oy,this.pw,this.ph);
                 });
                 this.reclip.addEventListener('click',() => {
+                    this.cliped = false;
                     this.ctx.restore();
                     this.ctx.drawImage(this.image, this.ox, this.oy, this.pw, this.ph);
                     this.drawBorder();
                     this.drawControl();
+                });
+                this.file.addEventListener('change',(e) => {
+                    this.reclip.click();
+                    let dataURL = window.URL.createObjectURL(this.file.files[0]);
+                    this.image.src = dataURL;
                 })
+                
             }
         })
     </script>
