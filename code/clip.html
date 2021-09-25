@@ -10,6 +10,8 @@
     <div id="app">
         <canvas id="canvas" :width="cw" :height="ch" style="border: 1px #ccc solid;"></canvas>
         <img src="" id="img">
+        <button id="clip">clip</button>
+        <button id="reclip">reclip</button>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script>
@@ -24,7 +26,7 @@
                     [400,400],
                     [100,400]
                 ],
-                w: 5,
+                w: 8,
                 step: 1.1,
                 strokeStyle: 'rgb(250,55,50)',
                 fillStyle: 'rgba(250,255,255,0.3)',
@@ -50,6 +52,8 @@
                     this.image = document.images[0];
                     this.image.src = this.imgURL;
                     this.image.width = 0;
+                    this.clip = document.querySelector('#clip');
+                    this.reclip = document.querySelector('#reclip');
                     //onload后执行
                     this.image.onload = () => {
                         this.ctx.drawImage(this.image, this.ox, this.oy, this.pw, this.ph);
@@ -204,11 +208,10 @@
                     this.drawControl();
                     this.dx = x;
                     this.dy = y;
-                }
+                },
             },
             mounted: function() {
                 this.init();
-                //监视鼠标是否移动到控制器上
                 this.c.addEventListener('mousemove',(e) => {
                     let x = e.clientX - this.c.offsetLeft;
                     let y = e.clientY - this.c.offsetTop;
@@ -218,7 +221,24 @@
                     }else if(this.down === true){
                         if(this.currentCp === 8) {
                             this.moveControl(x,y);
-                        }else {
+                        }else if(this.currentCp>=0&&this.currentCp<=7) {
+                            this.resizeControl(x,y);
+                        }
+                    }else if(this.movep === true) {
+                        this.movePic(x,y,1);
+                    }
+                });
+                this.c.addEventListener('touchmove',(e) => {
+                    e.preventDefault();
+                    let x = e.targetTouches[0].clientX - this.c.offsetLeft;
+                    let y = e.targetTouches[0].clientY - this.c.offsetTop;
+                    if(this.down === false&&this.movep === false) {
+                        this.currentCp = this.getCurrntCp(x,y);
+                        this.c.style.cursor = this.cursor[this.currentCp]
+                    }else if(this.down === true){
+                        if(this.currentCp === 8) {
+                            this.moveControl(x,y);
+                        }else if(this.currentCp>=0&&this.currentCp<=7){
                             this.resizeControl(x,y);
                         }
                     }else if(this.movep === true) {
@@ -226,6 +246,9 @@
                     }
                 });
                 this.c.addEventListener('mousedown',(e) => {
+                    let x = e.clientX - this.c.offsetLeft;
+                    let y = e.clientY - this.c.offsetTop;
+                    this.currentCp = this.getCurrntCp(x,y)
                     if(this.currentCp<9) {
                         this.down = true;
                         this.movep = false;
@@ -236,12 +259,34 @@
                     this.dx = e.clientX - this.c.offsetLeft;
                     this.dy = e.clientY - this.c.offsetTop;
                 });
+                this.c.addEventListener('touchstart',(e) => {
+                    let x = e.targetTouches[0].clientX - this.c.offsetLeft;
+                    let y = e.targetTouches[0].clientY - this.c.offsetTop;
+                    this.currentCp = this.getCurrntCp(x,y)
+                    if(this.currentCp<9) {
+                        this.down = true;
+                        this.movep = false;
+                    }else if(this.currentCp===9) {
+                        this.movep = true;
+                        this.down = false;
+                    }
+                    this.dx = e.targetTouches[0].clientX - this.c.offsetLeft;
+                    this.dy = e.targetTouches[0].clientY - this.c.offsetTop;
+                });
                 this.c.addEventListener('mouseup',(e) => {
                     if(this.down) {
                         this.down = false;
                     }
                     if(this.movep) {
                         this.movep = false
+                    }
+                });
+                this.c.addEventListener('touchend',(e) => {
+                    if(this.down) {
+                        this.down = false;
+                    }
+                    if(this.movep) {
+                        this.movep = false;
                     }
                 });
                 this.c.addEventListener('mousewheel',(e) => {
@@ -251,6 +296,23 @@
                         this.resizePic(0);
                     }
                 });
+                this.clip.addEventListener('click',() => {
+                    let width = this.coord[2][0] - this.coord[0][0];
+                    let height = this.coord[2][1] - this.coord[0][1];
+                    this.ctx.save();
+                    this.ctx.clearRect(0,0,this.cw,this.ch);
+                    this.ctx.beginPath();
+                    this.ctx.rect(this.coord[0][0],this.coord[0][1],width,height);
+                    this.ctx.closePath();
+                    this.ctx.clip();
+                    this.ctx.drawImage(this.image,this.ox,this.oy,this.pw,this.ph);
+                });
+                this.reclip.addEventListener('click',() => {
+                    this.ctx.restore();
+                    this.ctx.drawImage(this.image, this.ox, this.oy, this.pw, this.ph);
+                    this.drawBorder();
+                    this.drawControl();
+                })
             }
         })
     </script>
