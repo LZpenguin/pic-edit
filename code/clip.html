@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./clip.css">
     <title>Document</title>
 </head>
 <body>
@@ -14,11 +15,15 @@
         <input type="file" id='file'>
         <button id="clip">clip</button>
         <button id="reclip">reclip</button>
-        固定裁剪框比例<input type="checkbox" v-model="w_h">
-        固定裁剪框大小<input type="checkbox" v-model="lockCtl">
-        固定被剪裁图像大小<input type="checkbox" v-model="lockPic">
-        <span v-html="borderw"></span>
-        <span v-html="borderh"></span>
+        <ul>
+            <li>固定裁剪框比例<input type="checkbox" v-model="w_h"></li>
+            <li>固定裁剪框大小<input type="checkbox" v-model="lockCtl"></li>
+            <li>固定被剪裁图像大小<input type="checkbox" v-model="lockPic"></li>
+        </ul>
+        <div id="wh">
+            <span v-html="parseInt(borderw)"></span>,
+            <span v-html="parseInt(borderh)"></span>
+        </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script>
@@ -46,6 +51,7 @@
                 lockCtl: false,
                 w_h: false,
                 lockPic: false,
+                dbltouch: false,
                 ox: 10,
                 oy: 10,
                 cw: 500,
@@ -64,6 +70,7 @@
                     this.ctx.fillStyle = this.fillStyle;
                     this.image = new Image();
                     this.image.src = this.imgURL;
+                    this.wh = document.querySelector('#wh');
                     this.clip = document.querySelector('#clip');
                     this.reclip = document.querySelector('#reclip');
                     this.file = document.querySelector('#file');
@@ -165,6 +172,8 @@
                     this.drawControl();
                     this.dx = x;
                     this.dy = y;
+                    this.wh.style.left = this.c.offsetLeft + this.coord[0][0] + this.borderw + 'px';
+                    this.wh.style.top = this.c.offsetTop + this.coord[0][1] + this.borderh + 'px';
                 },
                 resizeControl(x,y) {
                     if(this.lockCtl) {
@@ -226,18 +235,25 @@
                     this.dy = y;
                     this.borderw = this.coord[2][0]-this.coord[0][0];
                     this.borderh = this.coord[2][1]-this.coord[0][1];
+                    this.wh.style.left = this.c.offsetLeft + this.coord[0][0] + this.borderw + 'px';
+                    this.wh.style.top = this.c.offsetTop + this.coord[0][1] + this.borderh + 'px';
                 },
-                resizePic(n) {
+                resizePic(n,scale) {
                     if(this.lockPic) {
                         return;
                     }
                     let oldCenter = [this.ox+this.pw/2,this.oy+this.ph/2];
-                    if(n) {
-                        this.pw *= this.step;
-                        this.ph *= this.step;
+                    if(scale) {
+                        this.pw *= this.scale;
+                        this.ph *= this.scale;
                     }else {
-                        this.pw /= this.step;
-                        this.ph /= this.step;
+                        if(n) {
+                           this.pw *= this.step;
+                           this.ph *= this.step;
+                        }else {
+                           this.pw /= this.step;
+                           this.ph /= this.step;
+                        }
                     }
                     let newCenter = [this.ox+this.pw/2,this.oy+this.ph/2];
                     this.movePic(newCenter[0]-oldCenter[0],newCenter[1]-oldCenter[1],0)
@@ -259,8 +275,16 @@
                     this.dx = x;
                     this.dy = y;
                 },
+                getDistance(a,b) {
+                    let x = b.clientX - a.clientX;
+                    let y = b.clientY - a.clientY;
+                    return Math.sqrt((x*x)+(y*y));
+                }
             },
             mounted: function() {
+                document.onselectstart = () => {
+                    return false;
+                }
                 this.init();
                 this.c.addEventListener('mousemove',(e) => {
                     let x = e.clientX - this.c.offsetLeft;
@@ -280,19 +304,27 @@
                 });
                 this.c.addEventListener('touchmove',(e) => {
                     e.preventDefault();
-                    let x = e.targetTouches[0].clientX - this.c.offsetLeft;
-                    let y = e.targetTouches[0].clientY - this.c.offsetTop;
-                    if(this.down === false&&this.movep === false) {
-                        this.currentCp = this.getCurrntCp(x,y);
-                        this.c.style.cursor = this.cursor[this.currentCp]
-                    }else if(this.down === true){
-                        if(this.currentCp === 8) {
-                            this.moveControl(x,y);
-                        }else if(this.currentCp>=0&&this.currentCp<=7){
-                            this.resizeControl(x,y);
+                    if(e.dbltouch) {
+                        console.log(111);
+                        this.end = e.touches;
+                        var scale = this.getDistance(this.end[0],this.end[1])/this.getDistance(this.start[0],this.start[1]);
+                        this.resizePic(1,scale);
+                        this.start = e.touches;
+                    }else {
+                        let x = e.targetTouches[0].clientX - this.c.offsetLeft;
+                        let y = e.targetTouches[0].clientY - this.c.offsetTop;
+                        if(this.down === false&&this.movep === false) {
+                            this.currentCp = this.getCurrntCp(x,y);
+                            this.c.style.cursor = this.cursor[this.currentCp]
+                        }else if(this.down === true){
+                            if(this.currentCp === 8) {
+                                this.moveControl(x,y);
+                            }else if(this.currentCp>=0&&this.currentCp<=7){
+                                this.resizeControl(x,y);
+                            }
+                        }else if(this.movep === true) {
+                            this.movePic(x,y,1);
                         }
-                    }else if(this.movep === true) {
-                        this.movePic(x,y,1);
                     }
                 });
                 this.c.addEventListener('mousedown',(e) => {
@@ -315,6 +347,10 @@
                 this.c.addEventListener('touchstart',(e) => {
                     if(this.cliped) {
                         return;
+                    }
+                    if(e.touches.length>=2) {
+                        this.dbltouch = true;
+                        this.start = e.touches;
                     }
                     let x = e.targetTouches[0].clientX - this.c.offsetLeft;
                     let y = e.targetTouches[0].clientY - this.c.offsetTop;
@@ -344,6 +380,9 @@
                     if(this.movep) {
                         this.movep = false;
                     }
+                    if(this.dbltouch) {
+                        this.dbltouch = false;
+                    }
                 });
                 this.c.addEventListener('mousewheel',(e) => {
                     e.preventDefault();
@@ -351,9 +390,9 @@
                         return;
                     }
                     if(e.wheelDelta>0) {
-                        this.resizePic(1);
+                        this.resizePic(1,0);
                     }else {
-                        this.resizePic(0);
+                        this.resizePic(0,0);
                     }
                 });
                 this.clip.addEventListener('click',() => {
@@ -382,8 +421,7 @@
                     this.reclip.click();
                     let dataURL = window.URL.createObjectURL(this.file.files[0]);
                     this.image.src = dataURL;
-                })
-                
+                });
             }
         })
     </script>
