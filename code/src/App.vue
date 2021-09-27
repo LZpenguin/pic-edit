@@ -6,6 +6,7 @@
     <input type="file" id='file'>
     <button id="clip">clip</button>
     <button id="reclip">reclip</button>
+    <a id="save" href=""><button>save</button></a>
     <ul>
       <li>固定裁剪框比例<input type="checkbox" v-model="w_h"></li>
       <li>固定裁剪框大小<input type="checkbox" v-model="lockCtl"></li>
@@ -87,10 +88,13 @@ export default {
       this.reclip = document.querySelector('#reclip')
       this.file = document.querySelector('#file')
       this.temp = document.createElement('canvas')
+      this.save = document.querySelector('#save')
       // onload后执行
       this.image.onload = () => {
         this.pw = this.image.width
         this.ph = this.image.height
+        this.borderw = this.pw
+        this.borderh = this.ph
         while (this.pw >= this.cw - 5 || this.ph >= this.ch - 5) {
           this.pw /= this.step
           this.ph /= this.step
@@ -435,6 +439,8 @@ export default {
       this.tempCtx = this.temp.getContext('2d')
       this.tempCtx.putImageData(data, 0, 0, 0, 0, this.borderw, this.borderh)
       this.img.src = this.temp.toDataURL('image/png')
+      this.save.href = this.img.src
+      this.save.download = 'pic-edit' + new Date().getTime()
     })
     this.reclip.addEventListener('click', () => {
       this.cliped = false
