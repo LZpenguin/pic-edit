@@ -91,12 +91,20 @@ export default {
       this.image.onload = () => {
         this.pw = this.image.width
         this.ph = this.image.height
-        while (this.pw >= this.cw || this.ph >= this.ch) {
+        while (this.pw >= this.cw - 5 || this.ph >= this.ch - 5) {
           this.pw /= this.step
           this.ph /= this.step
         }
         this.ox = (this.cw - this.pw) / 2
         this.oy = (this.ch - this.ph) / 2
+        this.coord = [
+          [this.ox, this.oy],
+          [this.ox + this.pw, this.oy],
+          [this.ox + this.pw, this.oy + this.ph],
+          [this.ox, this.oy + this.ph]
+        ]
+        this.wh.style.left = this.c.offsetLeft + this.coord[2][0] + 8 + 'px'
+        this.wh.style.top = this.c.offsetTop + this.coord[2][1] - 27 + 'px'
         this.ctx.clearRect(0, 0, this.cw, this.ch)
         this.ctx.drawImage(this.image, this.ox, this.oy, this.pw, this.ph)
         this.drawBorder()
@@ -185,8 +193,8 @@ export default {
       this.drawControl()
       this.dx = x
       this.dy = y
-      this.wh.style.left = this.c.offsetLeft + this.coord[0][0] + this.borderw + 'px'
-      this.wh.style.top = this.c.offsetTop + this.coord[0][1] + this.borderh + 'px'
+      this.wh.style.left = this.c.offsetLeft + this.coord[2][0] + 8 + 'px'
+      this.wh.style.top = this.c.offsetTop + this.coord[2][1] - 27 + 'px'
     },
     resizeControl: function (x, y) {
       if (this.lockCtl) {
@@ -248,8 +256,8 @@ export default {
       this.dy = y
       this.borderw = this.coord[2][0] - this.coord[0][0]
       this.borderh = this.coord[2][1] - this.coord[0][1]
-      this.wh.style.left = this.c.offsetLeft + this.coord[0][0] + this.borderw + 'px'
-      this.wh.style.top = this.c.offsetTop + this.coord[0][1] + this.borderh + 'px'
+      this.wh.style.left = this.c.offsetLeft + this.coord[2][0] + 8 + 'px'
+      this.wh.style.top = this.c.offsetTop + this.coord[2][1] - 27 + 'px'
     },
     resizePic: function (n, scale) {
       if (this.lockPic) {
