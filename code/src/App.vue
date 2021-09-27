@@ -3,7 +3,7 @@
     <canvas id="canvas" :width="cw" :height="ch" style="border: 1px #ccc solid;"></canvas>
     <img src="" id="img">
     <br>
-    <input type="file" id='file'>
+    <input type="file" id='file'><br>
     <button id="clip">clip</button>
     <button id="reclip">reclip</button>
     <a id="save" href=""><button>save</button></a>
@@ -22,10 +22,10 @@
 <style lang="less">
 #wh {
   position: absolute;
-  height: 25px;
-  min-width: 70px;
-  padding: 0 5px;
-  line-height: 25px;
+  height: 20px;
+  min-width: 65px;
+  padding: 0 3px;
+  line-height: 20px;
   text-align: center;
   color: #e2565d;
   border: 2px solid #e2565d;
@@ -65,8 +65,8 @@ export default {
       dbltouch: false,
       ox: 10,
       oy: 10,
-      cw: 500,
-      ch: 500,
+      cw: 300,
+      ch: 300,
       pw: 480,
       ph: 480,
       borderw: 300,
@@ -93,8 +93,6 @@ export default {
       this.image.onload = () => {
         this.pw = this.image.width
         this.ph = this.image.height
-        this.borderw = this.pw
-        this.borderh = this.ph
         while (this.pw >= this.cw - 5 || this.ph >= this.ch - 5) {
           this.pw /= this.step
           this.ph /= this.step
@@ -111,6 +109,8 @@ export default {
         this.wh.style.top = this.c.offsetTop + this.coord[2][1] - 27 + 'px'
         this.ctx.clearRect(0, 0, this.cw, this.ch)
         this.ctx.drawImage(this.image, this.ox, this.oy, this.pw, this.ph)
+        this.borderw = this.pw
+        this.borderh = this.ph
         this.drawBorder()
         this.drawControl()
       }
